@@ -5,12 +5,17 @@
 <title>XTube</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<!-- PWA manifest and theme color -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0f0f1e">
+
+<!-- Components -->
 <script src="/components/navbar.js" defer></script>
 <script src="/components/floating-chat.js" defer></script>
 
 <style>
 body {
-  padding-top: 64px;
+  padding-top: 64px; /* space for fixed navbar */
   margin: 0;
   background: radial-gradient(circle at top, #15182b, #0b0d16);
   color: #e4e6eb;
@@ -82,6 +87,8 @@ h2 {
 <floating-chat></floating-chat>
 
 <script>
+const videosEl = document.getElementById("videos");
+
 fetch("/api/videos")
   .then(res => res.json())
   .then(videos => {
@@ -95,8 +102,17 @@ fetch("/api/videos")
       </div>
     `).join("");
   });
+</script>
 
-const videosEl = document.getElementById("videos");
+<!-- Register Service Worker for PWA -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(() => console.log('Service Worker registered ✅'))
+      .catch(err => console.error('Service Worker failed ❌', err));
+  });
+}
 </script>
 </body>
 </html>
