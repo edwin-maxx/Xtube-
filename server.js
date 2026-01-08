@@ -13,16 +13,11 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
   .catch(console.error);
 
-// Middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Serve static files from /tube (CSS, JS, HTML)
 app.use(express.static(path.join(__dirname, "tube")));
-
-app.use(express.static(__dirname)); // <-- ensures manifest.json & sw.js are accessible
-
-app.use("/icons", express.static(path.join(__dirname, "icons"))); // <-- ensures /icons/* works
+app.use(express.static(__dirname));
+app.use("/icons", express.static(path.join(__dirname, "icons")));
 
 app.use("/api/videos", require("./routes/videos"));
 app.use("/api/upload", require("./routes/upload"));
@@ -40,16 +35,6 @@ app.get("/watch", (req, res) => {
 app.get("/wtg", (req, res) => {
   res.sendFile(path.join(__dirname, "tube", "watchtg.html"));
 });
-
-app.get("/upload", (req, res) => {
-  res.sendFile(path.join(__dirname, "tube", "upload.html"));
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () =>
-  console.log(`Server running → http://localhost:${PORT}`)
-);
-
 
 app.get("/upload", (req, res) => {
   res.sendFile(path.join(__dirname, "tube", "upload.html"));
