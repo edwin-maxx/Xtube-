@@ -6,6 +6,8 @@ const VideoSchema = new mongoose.Schema({
   videoUrl: String,
   creator: String,
   views: { type: Number, default: 0 },
+  likes: { type: Number, default: 0 },
+  likedUsers: { type: [String], default: [] },
   createdAt: { type: Date, default: Date.now }
 });
 
