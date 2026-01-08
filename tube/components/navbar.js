@@ -9,11 +9,12 @@ class CustomNavbar extends HTMLElement {
           left: 0;
           right: 0;
           z-index: 1000;
+          width: 100%;
         }
 
         nav {
           height: 64px;
-          background: rgba(15, 15, 30, 0.92);
+          background: rgba(15,15,30,0.95);
           backdrop-filter: blur(18px);
           display: flex;
           justify-content: space-between;
@@ -31,10 +32,30 @@ class CustomNavbar extends HTMLElement {
 
         .logo {
           font-weight: 900;
-          font-size: 1.4rem;
+          font-size: 1.5rem;
           background: linear-gradient(90deg,#6b46c1,#d53f8c,#60cdf6);
           -webkit-background-clip: text;
           color: transparent;
+        }
+
+        ul {
+          display: flex;
+          gap: 1.8rem;
+          list-style: none;
+          margin: 0;
+          padding: 0;
+        }
+
+        a {
+          color: #fff;
+          text-decoration: none;
+          font-weight: 500;
+          font-size: 1rem;
+        }
+
+        a.active {
+          color: #7289da;
+          font-weight: 700;
         }
 
         .menu-toggle {
@@ -52,26 +73,7 @@ class CustomNavbar extends HTMLElement {
           border-radius: 2px;
         }
 
-        ul {
-          display: flex;
-          gap: 1.6rem;
-          list-style: none;
-          margin: 0;
-          padding: 0;
-        }
-
-        a {
-          color: #fff;
-          text-decoration: none;
-          font-weight: 500;
-        }
-
-        a.active {
-          color: #7289da;
-          font-weight: 700;
-        }
-
-        /* ===== MOBILE ===== */
+        /* MOBILE */
         @media (max-width: 900px) {
           .menu-toggle {
             display: block;
@@ -82,17 +84,26 @@ class CustomNavbar extends HTMLElement {
             top: 64px;
             left: 0;
             right: 0;
-            background: rgba(15, 15, 30, 0.97);
+            background: rgba(15,15,30,0.97);
             backdrop-filter: blur(16px);
             flex-direction: column;
             gap: 1rem;
             padding: 1rem 1.5rem;
             display: none;
-            border-bottom: 1px solid rgba(176,110,255,0.15);
           }
 
           nav.open ul {
             display: flex;
+          }
+
+          ul li {
+            width: 100%;
+          }
+
+          ul li a {
+            display: block;
+            padding: 0.5rem 0;
+            font-size: 1.2rem;
           }
         }
       </style>
@@ -111,6 +122,7 @@ class CustomNavbar extends HTMLElement {
         <ul>
           <li><a href="/" class="nav-link">Home</a></li>
           <li><a href="/upload" class="nav-link">Upload</a></li>
+          <li><a href="/watch" class="nav-link">Chat Room</a></li>
         </ul>
       </nav>
 
@@ -124,22 +136,16 @@ class CustomNavbar extends HTMLElement {
         });
 
         this.shadowRoot.addEventListener("click", e => {
-          if (e.target.closest(".nav-link")) {
+          if(e.target.closest(".nav-link")) {
             nav.classList.remove("open");
           }
         });
 
-        setTimeout(() => {
-          const path = location.pathname;
-          links.forEach(a => {
-            if (a.getAttribute("href") === path) {
-              a.classList.add("active");
-            }
-            if (path === "/" && a.getAttribute("href") === "/") {
-              a.classList.add("active");
-            }
-          });
-        }, 50);
+        // Set active link
+        const path = location.pathname === "/" ? "/" : location.pathname;
+        links.forEach(a => {
+          if(a.getAttribute("href") === path) a.classList.add("active");
+        });
       </script>
     `;
   }
