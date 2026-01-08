@@ -1,175 +1,140 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Watch | XTube</title>
-  <link rel="stylesheet" href="/tube/css/style.css">
-  <script type="module" src="/tube/components/navbar.js"></script>
+<meta charset="UTF-8">
+<title>Watch • XemoTube</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="/components/navbar.js" defer></script>
+<script src="/components/floating-chat.js" defer></script>
+
+<style>
+body {
+  margin: 0;
+  background: radial-gradient(circle at top, #15182b, #0b0d16);
+  color: #e4e6eb;
+  font-family: Inter, sans-serif;
+}
+
+.wrap {
+  max-width: 1100px;
+  margin: auto;
+  padding: 1.8rem;
+}
+
+video {
+  width: 100%;
+  border-radius: 18px;
+  box-shadow: 0 25px 70px rgba(0,0,0,.6);
+}
+
+h2 {
+  margin: 1rem 0 .6rem;
+}
+
+.actions {
+  display: flex;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+button {
+  background: linear-gradient(135deg,#5865f2,#7289da);
+  border: none;
+  padding: .6rem 1.3rem;
+  border-radius: 999px;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.comments {
+  margin-top: 2rem;
+}
+
+.comment {
+  background: rgba(26,29,46,0.9);
+  padding: .9rem;
+  border-radius: 14px;
+  margin-bottom: .7rem;
+}
+
+input, textarea {
+  width: 100%;
+  background: #10121c;
+  color: white;
+  border: 1px solid #2b2f4a;
+  padding: .7rem;
+  border-radius: 12px;
+  margin-bottom: .6rem;
+}
+</style>
 </head>
+
 <body>
-  
-  <custom-navbar></custom-navbar>
+<custom-navbar></custom-navbar>
 
-  
-  <div class="container">
-    <div class="main">
-      <video id="player" controls width="100%" style="border-radius:8px;"></video>
-      <h2 id="title"></h2>
-      <p id="creator"></p>
-      <p id="views"></p>
+<div class="wrap">
+  <h2 id="title"></h2>
+  <video id="video" controls></video>
 
-      <div style="display:flex; gap:10px; margin-bottom:15px;">
-        <button id="likeBtn">Like (<span id="likeCount">0</span>)</button>
-        <a id="downloadBtn" href="#" download>Download</a>
-      </div>
-
-      
-      <h3>Comments</h3>
-      <div id="comments"></div>
-      <form id="commentForm" style="margin-top:8px;">
-        <input type="text" id="commentInput" placeholder="Write a comment" required style="width:80%;">
-        <button>Comment</button>
-      </form>
-    </div>
-
-    <div class="sidebar">
-      
-      <h3>Recommended Videos</h3>
-      <div id="recommended"></div>
-
-    
-      <h3>Global Chat</h3>
-      <div id="chat" style="height:200px; overflow-y:auto; border-radius:6px; padding:5px;"></div>
-      <div style="display:flex; gap:5px; margin-top:5px;">
-        <input type="text" id="chatInput" placeholder="Type a message" style="flex:1;">
-        <button id="sendChat">Send</button>
-      </div>
-    </div>
+  <div class="actions">
+    <button onclick="like()">❤️ Like <span id="likes">0</span></button>
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="/js/user.js"></script>
-  <script>
-    const videoId = new URLSearchParams(location.search).get("id");
-    const player = document.getElementById("player");
-    const titleEl = document.getElementById("title");
-    const creatorEl = document.getElementById("creator");
-    const viewsEl = document.getElementById("views");
-    const likeBtn = document.getElementById("likeBtn");
-    const likeCount = document.getElementById("likeCount");
-    const downloadBtn = document.getElementById("downloadBtn");
-    const recommendedDiv = document.getElementById("recommended");
-    const commentsDiv = document.getElementById("comments");
-    const commentForm = document.getElementById("commentForm");
-    const chatDiv = document.getElementById("chat");
-    const chatInput = document.getElementById("chatInput");
-    const sendChat = document.getElementById("sendChat");
-    const username = getUsername();
+  <div class="comments">
+    <h3>💬 Comments</h3>
+    <textarea id="text" placeholder="Write something..."></textarea>
+    <button onclick="postComment()">Post</button>
+    <div id="list"></div>
+  </div>
+</div>
 
-    
-    async function loadVideo() {
-      const res = await fetch("/api/videos/" + videoId);
-      const video = await res.json();
+<floating-chat></floating-chat>
 
-      player.src = video.videoUrl;
-      titleEl.innerText = video.title;
-      creatorEl.innerText = "By " + video.creator;
-      viewsEl.innerText = video.views + " views";
-      likeCount.innerText = video.likes;
-      downloadBtn.href = video.videoUrl;
+<script>
+const id = new URLSearchParams(location.search).get("id");
+const username = localStorage.getItem("xemo_username") || "Guest";
 
-      loadRecommended(videoId);
-      loadComments();
-    }
+async function loadVideo() {
+  const v = await fetch(`/api/videos/${id}`).then(r=>r.json());
+  title.textContent = v.title;
+  video.src = v.videoUrl;
+  likes.textContent = v.likes;
+  fetch(`/api/videos/${id}/view`, {method:"POST"});
+}
 
-    
-    fetch("/api/videos/" + videoId + "/view", { method: "POST" });
+async function loadComments() {
+  const c = await fetch(`/api/comments/${id}`).then(r=>r.json());
+  list.innerHTML = c.map(x => `
+    <div class="comment">
+      <b>${x.username}</b><br>${x.text}
+    </div>
+  `).join("");
+}
 
-    
-    likeBtn.addEventListener("click", async () => {
-      const res = await fetch("/api/videos/" + videoId + "/like", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username })
-      });
-      const data = await res.json();
-      likeCount.innerText = data.likes;
-    });
+async function postComment() {
+  if (!text.value) return;
+  await fetch(`/api/comments/${id}`, {
+    method:"POST",
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ username, text:text.value })
+  });
+  text.value="";
+  loadComments();
+}
 
-    
-    async function loadRecommended(currentId) {
-      const res = await fetch("/api/videos");
-      const videos = await res.json();
-      const recs = videos.filter(v => v._id !== currentId).slice(0, 5);
-      recommendedDiv.innerHTML = "";
-      recs.forEach(v => {
-        const div = document.createElement("div");
-        div.style.cursor = "pointer";
-        div.innerHTML = `<img src="${v.thumbnail}" width="120" style="border-radius:4px;"><p>${v.title}</p>`;
-        div.onclick = () => location.href = "/watch?id=" + v._id;
-        recommendedDiv.appendChild(div);
-      });
-    }
+async function like() {
+  const r = await fetch(`/api/videos/${id}/like`,{
+    method:"POST",
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ username })
+  }).then(r=>r.json());
+  likes.textContent = r.likes;
+}
 
-  
-    async function loadComments() {
-      const res = await fetch("/api/comments/" + videoId);
-      const comments = await res.json();
-      commentsDiv.innerHTML = "";
-
-      comments.forEach(c => {
-        const div = document.createElement("div");
-        div.innerHTML = `<b>${c.username}</b>: ${c.text} 
-          <button onclick="reply('${c._id}')">Reply</button>
-          <div style="margin-left:15px;" id="replies-${c._id}">
-            ${c.replies.map(r => `<b>${r.username}</b>: ${r.text}`).join("<br>")}
-          </div>`;
-        commentsDiv.appendChild(div);
-      });
-    }
-
-  
-    commentForm.addEventListener("submit", async e => {
-      e.preventDefault();
-      const text = document.getElementById("commentInput").value;
-      if (!text) return;
-      await fetch("/api/comments/" + videoId, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, text })
-      });
-      document.getElementById("commentInput").value = "";
-      loadComments();
-    });
-
-    
-    window.reply = async (commentId) => {
-      const text = prompt("Reply:");
-      if (!text) return;
-      await fetch("/api/comments/reply/" + commentId, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, text })
-      });
-      loadComments();
-    };
-
-    
-    const socket = io();
-    sendChat.addEventListener("click", () => {
-      if (!chatInput.value) return;
-      socket.emit("chat-message", { username, text: chatInput.value });
-      chatInput.value = "";
-    });
-
-    socket.on("chat-message", msg => {
-      const div = document.createElement("div");
-      div.innerHTML = `<b>${msg.username}</b>: ${msg.text}`;
-      chatDiv.appendChild(div);
-      chatDiv.scrollTop = chatDiv.scrollHeight;
-    });
-
-    loadVideo();
-  </script>
+loadVideo();
+loadComments();
+</script>
 </body>
 </html>
