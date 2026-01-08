@@ -1,44 +1,73 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Upload | XemoTube</title>
+  <meta charset="UTF-8">
+  <title>Upload Video | XTube</title>
+  <link rel="stylesheet" href="/tube/css/style.css">
+  <script type="module" src="/tube/components/navbar.js"></script>
 </head>
 <body>
 
-<h2>Upload Video</h2>
+  <custom-navbar></custom-navbar>
 
-<form id="uploadForm">
-  <input type="text" id="title" placeholder="Video title" required><br><br>
-  <input type="text" id="thumbnail" placeholder="Thumbnail URL" required><br><br>
-  <input type="file" id="video" accept="video/*" required><br><br>
-  <button type="submit">Upload</button>
-</form>
+  
+  <div class="container" style="flex-direction:column; gap:20px; padding:40px; max-width:700px; margin:auto;">
+    <h2 style="color:#fff;">Upload Your Video</h2>
 
-<script src="/js/user.js"></script>
-<script>
-  const form = document.getElementById("uploadForm");
+    <form id="uploadForm" style="display:flex; flex-direction:column; gap:15px; background:#1e1f29; padding:20px; border-radius:10px;">
+      <input type="text" id="title" placeholder="Video Title" required>
+      <input type="text" id="creator" placeholder="Creator Name" required>
+      <textarea id="description" rows="4" placeholder="Video Description"></textarea>
+      <input type="file" id="videoFile" accept="video/*" required>
+      <button type="submit" style="background:linear-gradient(90deg,#6b46c1,#d53f8c,#60cdf6); color:#fff;">Upload Video</button>
+    </form>
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+    <div id="status" style="color:#fff; margin-top:10px;"></div>
+  </div>
 
-    const creator = getUsername();
-    const data = new FormData();
+  <script>
+    const username = getUsername(); // Ensure username exists in localStorage
+    const uploadForm = document.getElementById("uploadForm");
+    const statusDiv = document.getElementById("status");
 
-    data.append("title", title.value);
-    data.append("creator", creator);
-    data.append("thumbnail", thumbnail.value);
-    data.append("video", video.files[0]);
+    uploadForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      body: data
+      const title = document.getElementById("title").value;
+      const creator = document.getElementById("creator").value || username;
+      const description = document.getElementById("description").value;
+      const file = document.getElementById("videoFile").files[0];
+
+      if(!file){
+        statusDiv.innerText = "Please select a video file!";
+        return;
+      }
+
+      statusDiv.innerText = "Uploading video to Catbox... ⏳";
+
+      const formData = new FormData();
+      formData.append("videoFile", file);
+      formData.append("title", title);
+      formData.append("creator", creator);
+      formData.append("description", description);
+
+      try {
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData
+        });
+        const data = await res.json();
+
+        if(data.success){
+          statusDiv.innerHTML = `✅ Video uploaded successfully! <a href="/watch?id=${data.video._id}">Watch now</a>`;
+          uploadForm.reset();
+        } else {
+          statusDiv.innerText = "❌ Upload failed: " + data.message;
+        }
+      } catch(err){
+        statusDiv.innerText = "❌ Upload failed: " + err.message;
+      }
     });
-
-    const json = await res.json();
-    alert("Uploaded!");
-    location.href = "/watch?id=" + json._id;
-  });
-</script>
-
+  </script>
 </body>
 </html>
