@@ -111,7 +111,6 @@ class CustomNavbar extends HTMLElement {
         <ul>
           <li><a href="/" class="nav-link">Home</a></li>
           <li><a href="/upload" class="nav-link">Upload</a></li>
-          <li><a href="/watch" class="nav-link">Chat Room</a></li>
         </ul>
       </nav>
 
