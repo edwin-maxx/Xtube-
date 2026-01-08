@@ -5,21 +5,19 @@
 <title>Watch Together • XemoTube</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- Navbar & Socket.IO -->
 <script src="/socket.io/socket.io.js"></script>
 <script src="/components/navbar.js" defer></script>
 
 <style>
-/* ===== BODY ===== */
 body {
   margin:0;
-  font-family: Inter,sans-serif;
+  font-family: Inter, sans-serif;
   background: radial-gradient(circle at top, #15182b, #0b0d16);
   color: #e4e6eb;
-  overflow-x: hidden;
+  overflow-x:hidden;
 }
 
-/* ===== ONLINE USERS ===== */
+/* Navbar */
 #online {
   position: fixed;
   left: 10px;
@@ -31,16 +29,17 @@ body {
   z-index: 1000;
 }
 
-/* ===== CONTAINER ===== */
+/* Container */
 #container {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   padding: 1rem;
   gap: 1rem;
+  margin-top: 64px;
 }
 
-/* ===== SHARED VIDEO ===== */
+/* Shared video */
 #shared-video {
   flex: 1 1 700px;
   max-width: 1000px;
@@ -49,21 +48,29 @@ body {
   box-shadow: 0 20px 60px rgba(0,0,0,0.7);
 }
 
-/* ===== PEER VIDEOS ===== */
+/* Peer videos */
 #peers {
-  display: grid;
-  grid-template-columns: repeat(auto-fill,minmax(120px,1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 0.5rem;
 }
-#peers video {
-  width: 100%;
+.peer-video {
+  width: 120px;
+  height: 90px;
   border-radius: 12px;
   background: #000;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+  cursor: grab;
+  position: relative;
 }
 
-/* ===== CONTROLS ===== */
+/* Draggable style */
+.peer-video.dragging {
+  opacity: 0.8;
+  transform: scale(1.05);
+}
+
+/* Controls */
 #controls {
   position: fixed;
   bottom: 10px;
@@ -88,7 +95,7 @@ body {
   background: #7289da;
 }
 
-/* ===== CHAT ===== */
+/* Chat */
 #chat {
   position: fixed;
   right:0;
@@ -100,6 +107,12 @@ body {
   flex-direction:column;
   border-left: 1px solid rgba(176,110,255,0.2);
   z-index: 900;
+}
+#chat-header {
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(176,110,255,0.2);
+  cursor: pointer;
 }
 #chat-messages {
   flex:1;
@@ -114,14 +127,16 @@ body {
   background: #10121c;
   color: #e4e6eb;
 }
-#chat-message div {
+
+/* Message style */
+#chat-messages div {
   margin-bottom: 0.3rem;
 }
-#chat b {
+#chat-messages b {
   color: #7289da;
 }
 
-/* ===== RESPONSIVE ===== */
+/* Responsive */
 @media(max-width:900px){
   #chat {
     width: 100%;
@@ -136,17 +151,13 @@ body {
 }
 </style>
 </head>
+
 <body>
-
 <custom-navbar></custom-navbar>
-
 <div id="online">Online: 0</div>
 
 <div id="container">
-  <!-- Shared Video -->
   <video id="shared-video" controls></video>
-
-  <!-- Peer Videos -->
   <div id="peers"></div>
 </div>
 
@@ -154,11 +165,12 @@ body {
 <div id="controls">
   <button id="mute">Mute</button>
   <button id="cam">Camera</button>
-  <button id="play">Play/Pause</button>
+  <button id="play">Play</button>
 </div>
 
-<!-- Global Chat -->
+<!-- Chat -->
 <div id="chat">
+  <div id="chat-header">💬 Chat (Click to toggle)</div>
   <div id="chat-messages"></div>
   <input id="chat-input" placeholder="Message...">
 </div>
@@ -168,123 +180,137 @@ const socket = io();
 const username = localStorage.getItem("xemo_username") || prompt("Enter your username") || "Guest";
 localStorage.setItem("xemo_username", username);
 
+let localStream = null;
+const peers = {};
 const peersContainer = document.getElementById("peers");
 const sharedVideo = document.getElementById("shared-video");
-const chatInput = document.getElementById("chat-input");
 const chatMessages = document.getElementById("chat-messages");
+const chatInput = document.getElementById("chat-input");
 const onlineEl = document.getElementById("online");
 
-let localStream;
-const peers = {};
+// Request camera/mic but don't show yet
+navigator.mediaDevices.getUserMedia({ video:true, audio:true })
+.then(stream => { localStream = stream; })
+.catch(err => console.log("Camera/mic denied", err));
 
-// Get webcam & mic
-navigator.mediaDevices.getUserMedia({ video:true, audio:true }).then(stream => {
-  localStream = stream;
-  joinRoom();
-});
+// Join room
+socket.emit("join-room",{roomId:"global-call", username});
 
-function joinRoom(){
-  socket.emit("join-room",{roomId:"global-call", username});
+// Online users
+socket.on("online-users", users => onlineEl.textContent = "Online: " + users.length);
 
-  socket.on("online-users", users => {
-    onlineEl.textContent = "Online: " + users.length;
-  });
-
-  socket.on("user-joined", ({id, username})=>{
-    createPeer(id, username, true);
-  });
-
-  socket.on("user-left", id => {
-    if(peers[id]){
-      peers[id].video.remove();
-      peers[id].pc.close();
-      delete peers[id];
-    }
-  });
-
-  socket.on("signal", async ({from, signal}) => {
-    if(!peers[from]) createPeer(from, "Friend", false);
-    if(signal.type==='offer'){
-      await peers[from].pc.setRemoteDescription(new RTCSessionDescription(signal));
-      const answer = await peers[from].pc.createAnswer();
-      await peers[from].pc.setLocalDescription(answer);
-      socket.emit("signal", { target: from, signal: peers[from].pc.localDescription });
-    } else if(signal.type==='answer'){
-      await peers[from].pc.setRemoteDescription(new RTCSessionDescription(signal));
-    } else if(signal.candidate){
-      await peers[from].pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
-    }
-  });
-
-  socket.on("video-sync", data => {
-    sharedVideo.currentTime = data.time;
-    data.action==='play' ? sharedVideo.play() : sharedVideo.pause();
-  });
-}
-
-// Create peer connection
-function createPeer(id,name,initiator){
-  const pc = new RTCPeerConnection();
-  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
-  const video = document.createElement("video");
-  video.autoplay = true;
-  video.playsInline = true;
-  peersContainer.appendChild(video);
-
-  pc.ontrack = e => { video.srcObject = e.streams[0]; }
-
-  pc.onicecandidate = e => {
-    if(e.candidate) socket.emit("signal",{ target:id, signal:{ candidate:e.candidate } });
-  }
-
-  peers[id] = { pc, video, name };
-
-  if(initiator){
-    pc.createOffer().then(offer => {
-      pc.setLocalDescription(offer);
-      socket.emit("signal",{ target:id, signal: offer });
-    });
-  }
-}
-
-// --- Controls ---
-document.getElementById("mute").onclick = () => {
-  const track = localStream.getAudioTracks()[0];
-  track.enabled = !track.enabled;
-  document.getElementById("mute").textContent = track.enabled ? "Mute" : "Unmute";
-};
-document.getElementById("cam").onclick = () => {
-  const track = localStream.getVideoTracks()[0];
-  track.enabled = !track.enabled;
-  document.getElementById("cam").textContent = track.enabled ? "Camera" : "Show Cam";
-};
-document.getElementById("play").onclick = () => {
-  if(sharedVideo.paused){
-    sharedVideo.play();
-    socket.emit("video-sync",{ roomId:"global-call", action:"play", time:sharedVideo.currentTime });
-  } else {
-    sharedVideo.pause();
-    socket.emit("video-sync",{ roomId:"global-call", action:"pause", time:sharedVideo.currentTime });
-  }
-};
-
-// --- Global chat ---
+// Chat
 chatInput.addEventListener("keydown", e => {
   if(e.key==='Enter' && chatInput.value.trim()){
     socket.emit("chat-message",{username,text:chatInput.value});
     chatInput.value='';
   }
 });
-
 socket.on("chat-message", msg => {
   const div = document.createElement("div");
   div.innerHTML = `<b>@${msg.username}</b>: ${msg.text}`;
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 });
-</script>
 
+// Video sync
+socket.on("video-sync", data => {
+  sharedVideo.currentTime = data.time;
+  data.action==='play' ? sharedVideo.play() : sharedVideo.pause();
+});
+
+// Peer connection
+socket.on("user-joined", ({id}) => createPeer(id,true));
+socket.on("user-left", id => {
+  if(peers[id]) { peers[id].video.remove(); peers[id].pc.close(); delete peers[id]; }
+});
+socket.on("signal", async ({from, signal})=>{
+  if(!peers[from]) createPeer(from,false);
+  if(signal.type==='offer'){
+    await peers[from].pc.setRemoteDescription(new RTCSessionDescription(signal));
+    const answer = await peers[from].pc.createAnswer();
+    await peers[from].pc.setLocalDescription(answer);
+    socket.emit("signal",{target:from, signal:peers[from].pc.localDescription});
+  } else if(signal.type==='answer'){
+    await peers[from].pc.setRemoteDescription(new RTCSessionDescription(signal));
+  } else if(signal.candidate){
+    await peers[from].pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+  }
+});
+
+// Controls
+document.getElementById("mute").onclick = ()=>{
+  if(!localStream) return;
+  const track = localStream.getAudioTracks()[0];
+  track.enabled = !track.enabled;
+  document.getElementById("mute").textContent = track.enabled?"Mute":"Unmute";
+};
+document.getElementById("cam").onclick = ()=>{
+  if(!localStream) return;
+  const track = localStream.getVideoTracks()[0];
+  track.enabled = !track.enabled;
+  document.getElementById("cam").textContent = track.enabled?"Camera":"Show Cam";
+};
+document.getElementById("play").onclick = ()=>{
+  if(sharedVideo.paused){
+    sharedVideo.play();
+    socket.emit("video-sync",{roomId:"global-call",action:"play",time:sharedVideo.currentTime});
+  } else {
+    sharedVideo.pause();
+    socket.emit("video-sync",{roomId:"global-call",action:"pause",time:sharedVideo.currentTime});
+  }
+};
+
+// Peer creation
+function createPeer(id,initiator){
+  const pc = new RTCPeerConnection();
+  if(localStream) localStream.getTracks().forEach(track=>pc.addTrack(track,localStream));
+
+  const video = document.createElement("video");
+  video.autoplay = true;
+  video.playsInline = true;
+  video.classList.add("peer-video");
+  peersContainer.appendChild(video);
+
+  pc.ontrack = e=>video.srcObject = e.streams[0];
+  pc.onicecandidate = e=>{ if(e.candidate) socket.emit("signal",{target:id, signal:{candidate:e.candidate}}); }
+
+  // Make draggable
+  makeDraggable(video);
+
+  peers[id]={pc,video};
+
+  if(initiator){
+    pc.createOffer().then(offer=>{
+      pc.setLocalDescription(offer);
+      socket.emit("signal",{target:id, signal:offer});
+    });
+  }
+}
+
+// Draggable peer videos
+function makeDraggable(el){
+  let offsetX, offsetY, dragging=false;
+  el.onmousedown = e=>{
+    dragging=true;
+    offsetX=e.offsetX;
+    offsetY=e.offsetY;
+    el.classList.add("dragging");
+  }
+  document.onmouseup=()=>{ dragging=false; el.classList.remove("dragging"); }
+  document.onmousemove=e=>{
+    if(!dragging) return;
+    el.style.position="absolute";
+    el.style.left=(e.clientX-offsetX)+"px";
+    el.style.top=(e.clientY-offsetY)+"px";
+  }
+}
+
+// Toggle chat
+document.getElementById("chat-header").onclick=()=>{
+  const chat=document.getElementById("chat");
+  chat.style.display = chat.style.display==="none"?"flex":"flex";
+};
+</script>
 </body>
-  </html>
-  
+</html>
