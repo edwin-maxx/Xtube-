@@ -5,13 +5,18 @@
 <title>Upload • XTube</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<!-- PWA manifest and theme -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0f0f1e">
+
+<!-- Components -->
 <script src="/components/navbar.js" defer></script>
 <script src="/components/floating-chat.js" defer></script>
 
 <style>
 body {
   margin: 0;
-  padding-top: 64px;
+  padding-top: 64px; /* space for fixed navbar */
   background: radial-gradient(circle at top, #15182b, #0b0d16);
   color: #e4e6eb;
   font-family: Inter, sans-serif;
@@ -78,6 +83,17 @@ async function upload() {
   await fetch("/api/upload", { method:"POST", body: fd });
   alert("Upload successful!");
   location.href = "/";
+}
+</script>
+
+<!-- Register Service Worker for PWA -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(() => console.log('Service Worker registered ✅'))
+      .catch(err => console.error('Service Worker failed ❌', err));
+  });
 }
 </script>
 </body>
