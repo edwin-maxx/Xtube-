@@ -37,6 +37,20 @@ app.get("/watch", (req, res) => {
   res.sendFile(path.join(__dirname, "tube", "watch.html"));
 });
 
+app.get("/wtg", (req, res) => {
+  res.sendFile(path.join(__dirname, "tube", "watchtg.html"));
+});
+
+app.get("/upload", (req, res) => {
+  res.sendFile(path.join(__dirname, "tube", "upload.html"));
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () =>
+  console.log(`Server running → http://localhost:${PORT}`)
+);
+
+
 app.get("/upload", (req, res) => {
   res.sendFile(path.join(__dirname, "tube", "upload.html"));
 });
