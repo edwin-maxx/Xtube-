@@ -22,6 +22,7 @@ app.use(express.static("tube"));
 app.use("/api/videos", require("./routes/videos"));
 app.use("/api/upload", require("./routes/upload"));
 app.use("/api/comments", require("./routes/comments"));
+app.use("/api/messages", require("./routes/messages"));
 
 
 app.get("/", (req, res) => {
