@@ -1,52 +1,47 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>XemoTube</title>
-  <style>
-    .video {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 15px;
-      cursor: pointer;
-    }
-    img {
-      width: 160px;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <title>Home | XemoTube</title>
+  <link rel="stylesheet" href="/tube/css/style.css">
+  <script type="module" src="/tube/components/navbar.js"></script>
 </head>
 <body>
 
-<h1>XemoTube</h1>
+  <custom-navbar></custom-navbar>
 
-<div id="videos"></div>
 
-<script>
-  fetch("/api/videos")
-    .then(res => res.json())
-    .then(videos => {
-      const container = document.getElementById("videos");
+  <div class="container" style="flex-direction:row; flex-wrap:wrap; gap:20px; padding:20px;">
+    <div id="videos" style="display:flex; flex-wrap:wrap; gap:20px; justify-content:center;"></div>
+  </div>
 
+  <script>
+    const videosDiv = document.getElementById("videos");
+    async function loadVideos() {
+      const res = await fetch("/api/videos");
+      const videos = await res.json();
+      videosDiv.innerHTML = "";
       videos.forEach(v => {
-        const div = document.createElement("div");
-        div.className = "video";
-
-        div.innerHTML = `
-          <img src="${v.thumbnail}">
-          <div>
-            <h3>${v.title}</h3>
-            <p>${v.creator}</p>
-            <small>${v.views} views</small>
+        const card = document.createElement("div");
+        card.style.background = "#2f3136";
+        card.style.borderRadius = "8px";
+        card.style.width = "220px";
+        card.style.cursor = "pointer";
+        card.style.overflow = "hidden";
+        card.innerHTML = `
+          <img src="${v.thumbnail}" width="100%" style="display:block;">
+          <div style="padding:8px;">
+            <h4 style="margin:2px 0; color:#fff;">${v.title}</h4>
+            <p style="margin:2px 0; font-size:0.85em; color:#aaa;">${v.creator}</p>
+            <p style="margin:2px 0; font-size:0.8em; color:#888;">${v.views} views</p>
           </div>
         `;
-
-        div.onclick = () => {
-          location.href = "/watch?id=" + v._id;
-        };
-
-        container.appendChild(div);
+        card.onclick = () => location.href = "/watch?id=" + v._id;
+        videosDiv.appendChild(card);
       });
-    });
-</script>
+    }
 
+    loadVideos();
+  </script>
 </body>
 </html>
