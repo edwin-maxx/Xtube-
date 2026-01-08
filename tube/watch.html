@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Watch | XemoTube</title>
+</head>
+<body>
+
+<video id="player" controls width="800"></video>
+
+<h2 id="title"></h2>
+<p id="creator"></p>
+<p id="views"></p>
+
+<script>
+  const id = new URLSearchParams(location.search).get("id");
+
+  fetch("/api/videos/" + id)
+    .then(res => res.json())
+    .then(video => {
+      document.getElementById("player").src = video.videoUrl;
+      document.getElementById("title").innerText = video.title;
+      document.getElementById("creator").innerText = "By " + video.creator;
+      document.getElementById("views").innerText = video.views + " views";
+    });
+
+  fetch("/api/videos/" + id + "/view", { method: "POST" });
+</script>
+
+</body>
+</html>
